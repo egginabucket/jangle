@@ -1,0 +1,21 @@
+{
+    "terminal.integrated.env.linux": {
+        "PYTHONPATH": "src"
+    },
+    "terminal.integrated.env.osx": {
+        "PYTHONPATH": "src"
+    },
+    "terminal.integrated.env.windows": {
+        "PYTHONPATH": "src"
+    },
+    "python.formatting.provider": "black",
+    "python.analysis.inlayHints.functionReturnTypes": true,
+    "python.analysis.typeCheckingMode": "basic",
+    "python.analysis.useLibraryCodeForTypes": true,
+    "python.terminal.activateEnvironment": true,
+    "python.envFile": "${workspaceFolder}/.env",
+    "python.formatting.blackArgs": [
+        "--line-length",
+        "79"
+    ]
+}
