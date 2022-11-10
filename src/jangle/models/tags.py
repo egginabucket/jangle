@@ -7,6 +7,7 @@ from typing import Any
 
 from django.conf import settings
 from django.db import models
+from django.utils.timezone import utc
 
 from jangle.readers import IANASubtagRegistryReader
 from jangle.regexp import (
@@ -37,7 +38,7 @@ class IANASubtagRegistryManager(models.Manager["IANASubtagRegistry"]):
         registry = IANASubtagRegistryReader()
         registry_obj = self.create(
             file_date=registry.file_date,
-            saved=datetime.utcnow(),
+            saved=datetime.utcnow().replace(tzinfo=utc),
         )
         descriptions = []
         tag_strs = []
