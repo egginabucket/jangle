@@ -12,6 +12,7 @@ Use IETF BCP 47 / RFC 5646 language tags in Django.
    :maxdepth: 2
    :caption: Contents:
 
+   quickstart
    models/index
    models/languages
    models/scripts

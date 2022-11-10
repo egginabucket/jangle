@@ -31,7 +31,9 @@ class ISOLanguageCodesManager(BatchedCreateManager["ISOLanguageCodes"]):
         raise self.model.DoesNotExist(code)
 
     def register(self, clear=True, batch_size=64) -> None:
-        """Saves ISO 639-2 and 639-1 codes from the Library of Congress."""
+        """Saves ISO 639-2 and 639-1 codes from the Library of Congress.
+        See https://www.loc.gov/standards/iso639-2/ISO-639-2_utf-8.txt.
+        """
         response = requests.get(
             "https://www.loc.gov/standards/iso639-2/ISO-639-2_utf-8.txt"
         )
@@ -121,7 +123,9 @@ class SimpleISOLanguageCollectionManager(
         return self.get(part_5=code)
 
     def register(self, clear=True, batch_size=64) -> None:
-        """Saves basic ISO 639-5 data from the Library of Congress."""
+        """Saves basic ISO 639-5 data from the Library of Congress.
+        See http://id.loc.gov/vocabulary/iso639-5.tsv.
+        """
         response = requests.get("http://id.loc.gov/vocabulary/iso639-5.tsv")
         response.raise_for_status()
 
@@ -165,12 +169,14 @@ class SimpleISOLanguageCollection(models.Model):
 
     @property
     def loc_uri(self) -> str:
-        """URI on the Library of Congress."""
+        """URI on the Library of Congress.
+        Contains MADS/SKOS RDFS data.
+        """
         return urljoin("http://id.loc.gov/vocabulary/iso639-5", self.part_5)
 
     @property
     def ietf(self) -> str:
-        """Code used in IETF language codes."""
+        """Code used in IETF language tags."""
         return self.part_5
 
     def __str__(self) -> str:
@@ -225,7 +231,7 @@ class ISOLanguageManager(BatchedCreateManager["ISOLanguage"]):
     def register(
         self, clear=True, batch_size=64, zf: Optional[ZipFile] = None
     ) -> None:
-        """Saves ISO 639-3 languages from SIL."""
+        """Saves ISO 639-3 languages from SIL International."""
 
         def generate():
             with SilTableReader("iso-639-3", zf) as reader:
@@ -340,7 +346,7 @@ class ISOLanguageNameManager(BatchedCreateManager["ISOLanguageName"]):
     def register(
         self, clear=True, batch_size=64, zf: Optional[ZipFile] = None
     ) -> None:
-        """Saves ISO 639-3 language names from SIL."""
+        """Saves ISO 639-3 language names from SIL International."""
         if clear:
             self.all().delete()
 

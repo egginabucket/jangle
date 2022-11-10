@@ -2,6 +2,5 @@ Script Models
 -------------
 
 .. automodule:: jangle.models.scripts
-    :members:
-    :undoc-members:
-    :inherited-members:
+   :members:
+   :undoc-members:

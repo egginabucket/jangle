@@ -9,13 +9,15 @@
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'src'))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
 
 from jangle.boot_django import boot_django
 
 boot_django()
 
 from datetime import datetime
+
+from sphinx.application import Sphinx
 
 from jangle import __about__
 
@@ -39,3 +41,11 @@ exclude_patterns = []
 
 html_theme = "alabaster"
 html_static_path = ["_static"]
+
+html_css_files = [
+    "style/custom.css",
+]
+
+
+def setup(app: Sphinx) -> None:
+    app.add_css_file("style/custom.css")
