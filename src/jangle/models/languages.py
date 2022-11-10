@@ -66,7 +66,7 @@ class ISOLanguageCodesManager(BatchedCreateManager["ISOLanguageCodes"]):
 
 
 class ISOLanguageCodes(models.Model):
-    """ISO 639-2 and 639-1 language codes."""
+    """ISO 639-2 and 639-1 language codeset."""
 
     language: Optional["ISOLanguage"]
     part_2b = models.CharField(
@@ -74,29 +74,35 @@ class ISOLanguageCodes(models.Model):
         unique=True,
         max_length=3,
     )
+    """Bibliographic code (ISO 639-2/B)."""
     part_2t = models.CharField(
         "terminological code (ISO 639-2/T)",
         unique=True,
         max_length=3,
     )
+    """Terminological code (ISO 639-2/T)."""
     part_1 = models.CharField(
         "alpha-2 code (ISO 639-1)",
         null=True,
         max_length=2,
     )
+    """Alpha-2 code (ISO 639-1)."""
     names_en = models.CharField(
         "noms français",
         unique=True,
         max_length=75,
     )
+    """English names."""
     names_fr = models.CharField(
         "English names",
         unique=True,
         max_length=75,
     )
+    """French names."""
 
     @property
     def ietf(self) -> str:
+        """Code used in IETF language tags."""
         return self.part_1 or self.part_2b
 
     def __str__(self) -> str:
@@ -143,23 +149,28 @@ class SimpleISOLanguageCollection(models.Model):
     part_5 = models.CharField(
         "ISO 639-5 alpha-3 code", unique=True, max_length=3
     )
+    """ISO 639-5 alpha-3 code."""
     names_en = models.CharField(
         "English names",
         unique=True,
         max_length=75,
     )
+    """English names."""
     names_fr = models.CharField(
         "noms français",
         unique=True,
         max_length=75,
     )
+    """French names."""
 
     @property
     def loc_uri(self) -> str:
+        """URI on the Library of Congress."""
         return urljoin("http://id.loc.gov/vocabulary/iso639-5", self.part_5)
 
     @property
     def ietf(self) -> str:
+        """Code used in IETF language codes."""
         return self.part_5
 
     def __str__(self) -> str:
@@ -281,21 +292,25 @@ class ISOLanguage(models.Model):
         unique=True,
         on_delete=models.CASCADE,
     )
+    """ISO 693-1 and 639-2 codes."""
     ref_name = models.CharField(
         "reference name",
         unique=True,
         max_length=150,
     )
+    """Reference name."""
     part_3 = models.CharField(
         "alpha-3 code (ISO 639-3)",
         unique=True,
         max_length=3,
     )
+    """Alpha-3 code (ISO 639-3)."""
     lang_type = models.CharField(
         "type",
         choices=LanguageType.choices,
         max_length=1,
     )
+    """Type."""
     scope = models.CharField(choices=Scope.choices, max_length=1)
     comment = models.CharField(null=True, max_length=150)
 
@@ -305,10 +320,11 @@ class ISOLanguage(models.Model):
         null=True,
         on_delete=models.SET_NULL,
     )
+    """Macrolanguage."""
 
     @property
     def ietf(self) -> str:
-        """Shortest ISO 639 code (part 1 or 3)"""
+        """Shortest ISO 639 code (part 1 or 3)."""
         return self.codes and self.codes.part_1 or self.part_3
 
     objects = ISOLanguageManager()

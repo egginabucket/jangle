@@ -48,15 +48,21 @@ class Script(models.Model):
     """
 
     code = models.CharField("ISO 15924 code", unique=True, max_length=4)
+    """ISO 15924 code."""
     no = models.PositiveSmallIntegerField("ISO 15924 number", unique=True)
-    names_en = models.CharField("English name", unique=True, max_length=75)
-    names_fr = models.CharField("nom français", unique=True, max_length=75)
+    """ISO 15924 number."""
+    names_en = models.CharField("English names", unique=True, max_length=75)
+    """English names."""
+    names_fr = models.CharField("noms français", unique=True, max_length=75)
+    """French names."""
     pva = models.CharField("property value alias", null=True, max_length=150)
+    """Property value alias."""
     unicode_version = models.CharField(null=True, max_length=12)
     script_date = models.DateField()
 
     @property
     def no_str(self) -> str:
+        """Formatted string of ISO 15924 number."""
         return "{:03d}".format(self.no)
 
     def __str__(self) -> str:

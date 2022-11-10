@@ -19,6 +19,7 @@ class Region(models.Model):
         "ISO 3166-1 numeric / UN M.49 code",
         unique=True,
     )
+    """ISO 3166-1 numeric / UN M.49 code."""
     parent = models.ForeignKey(
         "self",
         null=True,
@@ -27,6 +28,7 @@ class Region(models.Model):
 
     @property
     def no_str(self) -> str:
+        """Formatted string of numeric code."""
         return "{:03d}".format(self.no)
 
     def get_name(self, iso_language: ISOLanguage) -> str:
@@ -47,13 +49,14 @@ class RegionName(models.Model):
         ISOLanguage,
         on_delete=models.PROTECT,
     )
+    """ISO language."""
 
     class Meta:
         unique_together = ("region", "iso_lang")
 
 
 class ISORegion(models.Model):
-    """ISO 3166 region"""
+    """ISO 3166 region."""
 
     region = models.OneToOneField(
         Region,
@@ -65,23 +68,28 @@ class ISORegion(models.Model):
         unique=True,
         max_length=2,
     )
+    """ISO 3166-1 alpha-2 code."""
     alpha_3 = models.CharField(
         "ISO 3166-1 alpha-3 code",
         unique=True,
         max_length=3,
     )
+    """ISO 3166-1 alpha-3 code."""
     in_ldc = models.BooleanField(
         "Least Developing Countries",
         default=False,
     )
+    """In UN Least Developing Countries."""
     in_lldc = models.BooleanField(
         "Land Locked Developing Countries",
         default=False,
     )
+    """In UN Least Land Locked Developing Countries."""
     in_sids = models.BooleanField(
         "Small Island Developing States",
         default=False,
     )
+    """In UN Small Island Developing States."""
 
     def __str__(self) -> str:
         return str(self.region)

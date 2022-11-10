@@ -18,7 +18,9 @@ def findattr(obj, path) -> Optional[Any]:
         elif len(path) > 1:
             return findattr(obj, path)
     else:
-        raise ValueError("path should be list[str | tuple] or tuple[str | list]")
+        raise ValueError(
+            "path should be list[str | tuple] or tuple[str | list]"
+        )
 
 
 def choice_from_iana(choices: type[models.TextChoices], string: str):
@@ -30,6 +32,7 @@ _T = TypeVar("_T", bound=models.Model)
 
 class BatchedCreateManager(models.Manager[_T]):
     def batched_create(self, objs: Iterable, batch_size=64, **kwargs) -> None:
+        """Bulk-creates objects in batches of specified size."""
         while True:
             batch = list(islice(objs, batch_size))
             if not batch:

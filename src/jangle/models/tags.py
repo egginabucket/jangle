@@ -161,7 +161,8 @@ class IANASubtagRecord(models.Model):
     deprecated = models.DateField(null=True)
     added = models.DateField()
     comments = models.TextField(null=True)
-    pref_value = models.CharField(null=True, max_length=42)
+    pref_value = models.CharField("preferred value", null=True, max_length=42)
+    """Preferred value."""
 
     def first_description(self) -> str:
         return self.descriptions.get(index=0).text
@@ -570,6 +571,7 @@ class LanguageTag(models.Model):
 
     @cached_property
     def description(self) -> str:
+        """English description of what the tag represents."""
         if self.iana:
             return self.iana.first_description()
         parts = [self.lang.iana.first_description()]  # type: ignore

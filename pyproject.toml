@@ -6,11 +6,11 @@ build-backend = "hatchling.build"
 name = "django-jangle"
 description = "IETF BCP 47 / RFC 5646 language tags in Django"
 readme = "README.md"
-license = "MIT"
+license-files = { paths = ["LICENSE.txt"] }
 authors = [{ name = "Hannah Einstein", email = "hannah.a.einstein@gmail.com" }]
 classifiers = [
     "License :: OSI Approved :: MIT License",
-    "Framework :: Django",
+    "Framework :: Django :: 4.1",
     "Programming Language :: Python :: 3",
     "Operating System :: OS Independent",
 ]
@@ -37,7 +37,7 @@ package-dir = { "" = "src" }
 where = ["src"]
 
 [tool.black]
-line-length = 79
+line_length = 79
 
 [tool.isort]
-line-length = 79
+line_length = 79

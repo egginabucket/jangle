@@ -7,6 +7,7 @@ BASE_DIR = Path(__file__).resolve().parents[1]
 
 
 def boot_django() -> None:
+    """Boots Django with jangle and a sqlite DB for development."""
     settings.configure(
         BASE_DIR=BASE_DIR,
         DEBUG=True,
