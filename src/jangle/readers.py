@@ -137,10 +137,7 @@ class SilTableReader:
 
 
 class IANARegistryReader:
-    """Provides an IANASubtagRegistry object and
-    an iterable of records from
-    https://www.iana.org/assignments/language-subtag-registry/language-subtag-registry.
-    """
+    """Provides a file date and an iterable of records from an IANA registry."""
 
     chunk_size = ITER_CHUNK_SIZE
     records: Generator[Record, None, None]
@@ -161,6 +158,7 @@ class IANARegistryReader:
 
 
 class IANASubtagRegistryReader(IANARegistryReader):
+    """Reads https://www.iana.org/assignments/language-subtag-registry/language-subtag-registry."""
     def __init__(self) -> None:
         super().__init__("language-subtag-registry")
 

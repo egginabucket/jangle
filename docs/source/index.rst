@@ -19,7 +19,7 @@ Use IETF BCP 47 / RFC 5646 language tags in Django.
    models/tags
    models/utils
    regexp
-   
+   readers
 
 
 Indices and tables
