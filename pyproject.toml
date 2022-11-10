@@ -23,6 +23,7 @@ dev = ["hatch", "wheel", "ipython", "black", "isort", "django-stubs", "sphinx"]
 
 [project.urls]
 Homepage = "https://github.com/egginabucket/jangle"
+Documentation = "https://jangle.readthedocs.io/en/latest/"
 
 [tool.hatch.version]
 path = "src/jangle/__about__.py"
