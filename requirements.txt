@@ -1,0 +1,4 @@
+# optional/dev dependencies are in pyproject.toml
+
+Django>=4.1
+requests>=2.28.0
