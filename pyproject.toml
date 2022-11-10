@@ -6,7 +6,7 @@ build-backend = "hatchling.build"
 name = "django-jangle"
 description = "IETF BCP 47 / RFC 5646 language tags in Django"
 readme = "README.md"
-license-files = { paths = ["LICENSE.txt"] }
+license = "MIT"
 authors = [{ name = "Hannah Einstein", email = "hannah.a.einstein@gmail.com" }]
 classifiers = [
     "License :: OSI Approved :: MIT License",
