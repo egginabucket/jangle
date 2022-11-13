@@ -23,6 +23,13 @@ Add jangle to your project's installed apps:
        "jangle",
    ]
 
+
+Migrate database:
+
+.. code-block:: console
+
+   $ python manage.py migrate
+
 Save jangle data to the project's database:
 
 .. code-block:: console

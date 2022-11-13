@@ -27,6 +27,9 @@ INSTALLED_APPS = [
 ]
 ```
 
+Migrate database:
+`python manage.py migrate`
+
 Save jangle data to the project's database:
 `python manage.py loadjangledata`
 
