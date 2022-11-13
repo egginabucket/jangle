@@ -5,6 +5,15 @@ from typing import Any, Iterable, Optional, TypeVar
 from django.db import models
 
 
+class StrReprCls:
+    """Provides __repr__ showing
+    the object's module, class name and string representation.
+    """
+
+    def __repr__(self) -> str:
+        return f"<{self.__module__}.{type(self).__qualname__} '{str(self)}'>"
+
+
 def findattr(obj, path) -> Optional[Any]:
     """This thing is goofy. Don't use it."""
     if isinstance(path, tuple):
@@ -21,7 +30,7 @@ def findattr(obj, path) -> Optional[Any]:
         elif len(path) > 1:
             return findattr(obj, path)
     else:
-        raise ValueError(
+        raise TypeError(
             "path should be list[str | tuple] or tuple[str | list]"
         )
 
