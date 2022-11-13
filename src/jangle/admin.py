@@ -172,7 +172,7 @@ class LanguageTagAdmin(admin.ModelAdmin):
 class LanguageTagVariantSubtag(admin.ModelAdmin):
     list_display = ["tag", "index", "variant"]
     search_fields = [
-        "variant__code",
+        "variant__text",
         "variant__iana__descriptions__text",
     ]
 
