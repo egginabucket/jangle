@@ -63,7 +63,14 @@ class ISOLanguageNameAdmin(admin.ModelAdmin):
 
 @admin.register(models.Script)
 class ScriptAdmin(admin.ModelAdmin):
-    list_display = ["code", "no", "names_en", "pva", "unicode_version", "script_date"]
+    list_display = [
+        "code",
+        "no",
+        "names_en",
+        "pva",
+        "unicode_version",
+        "script_date",
+    ]
     search_fields = [
         "code",
         "no",
@@ -158,4 +165,34 @@ class LanguageTagAdmin(admin.ModelAdmin):
         "private",
         "grandfathered_tag",
         "iana__descriptions__text",
+    ]
+
+
+@admin.register(models.LanguageTagVariantSubtag)
+class LanguageTagVariantSubtag(admin.ModelAdmin):
+    list_display = ["tag", "index", "variant"]
+    search_fields = [
+        "variant__code",
+        "variant__iana__descriptions__text",
+    ]
+
+
+@admin.register(models.ExtensionSubtag)
+class ExtensionSubtagAdmin(admin.ModelAdmin):
+    list_display = [
+        "tag",
+        "index",
+        "singleton",
+    ]
+    search_fields = [
+        "texts__text",
+    ]
+
+
+@admin.register(models.ExtensionSubtagText)
+class ExtensionSubtagTextAdmin(admin.ModelAdmin):
+    list_display = [
+        "extension",
+        "index",
+        "text",
     ]
