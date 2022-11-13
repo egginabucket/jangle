@@ -8,11 +8,15 @@ description = "IETF BCP 47 / RFC 5646 language tags in Django"
 readme = "README.md"
 license = "MIT"
 authors = [{ name = "Hannah Einstein", email = "hannah.a.einstein@gmail.com" }]
+keywords = ["django", "language-tags", "rfc5646", "rfc-5646"]
 classifiers = [
-    "License :: OSI Approved :: MIT License",
     "Framework :: Django :: 4.1",
-    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3 :: Only",
 ]
 dependencies = ["Django>=4.1", "requests>=2.28.0"]
 requires-python = ">=3.10"
@@ -27,6 +31,9 @@ Documentation = "https://jangle.readthedocs.io/en/latest/"
 
 [tool.hatch.version]
 path = "src/jangle/__about__.py"
+
+[tool.hatch.build.targets.sdist]
+exclude = ["/.vscode", "/docs", ".readthedocs.yaml"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/jangle"]

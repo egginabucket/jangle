@@ -7,6 +7,7 @@ IETF BCP 47 / RFC 5646 language tags in Django
 [![PyPI Version](https://img.shields.io/pypi/v/django-jangle.svg)](https://pypi.org/project/django-jangle/)
 [![License](https://img.shields.io/pypi/l/django-jangle.svg)](https://pypi.org/project/django-jangle/)
 [![Python Versions](https://img.shields.io/pypi/pyversions/django-jangle.svg)](https://pypi.org/project/django-jangle/)
+[![Read the Docs](https://img.shields.io/readthedocs/jangle.svg)](https://jangle.readthedocs.io/en/latest/)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
 ## Use in your project!
