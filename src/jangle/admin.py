@@ -109,12 +109,11 @@ class ExtlangSubtagAdmin(admin.ModelAdmin):
 @admin.register(models.ScriptSubtag)
 class ScriptSubtagAdmin(admin.ModelAdmin):
     list_display = [
-        "code",
-        "ext_data",
+        "script",
         "iana",
     ]
     search_fields = [
-        "code",
+        "script__code",
         "iana__descriptions__text",
     ]
 
@@ -123,7 +122,7 @@ class ScriptSubtagAdmin(admin.ModelAdmin):
 class RegionSubtagAdmin(admin.ModelAdmin):
     list_display = [
         "code",
-        "ext_data",
+        "region",
         "iana",
     ]
     search_fields = [
@@ -153,10 +152,10 @@ class LanguageTagAdmin(admin.ModelAdmin):
     ]
     search_fields = [
         "lang_tag__code",
-        "region_tag__code",
-        "script_tag__code",
-        "private_tag",
-        "private_subtag",
+        "region__code",
+        "script__code",
+        "variants__text",
+        "private",
         "grandfathered_tag",
-        "iana_subtags__subtag",
+        "iana__descriptions__text",
     ]

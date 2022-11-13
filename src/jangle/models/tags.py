@@ -1,21 +1,19 @@
+from __future__ import annotations
+
 import operator
 import re
 import warnings
 from datetime import datetime
 from functools import cached_property, reduce
-from typing import Any
+from typing import Any, Tuple
 
 from django.conf import settings
 from django.db import models
 from django.utils.timezone import utc
 
 from jangle.readers import IANASubtagRegistryReader
-from jangle.regexp import (
-    COMPLIANT,
-    EXTENSION_P,
-    LANGUAGE_TAG_RE,
-    split_subtags,
-)
+from jangle.lite import LangTag, LanguageTagLite
+from jangle.utils import choice_from_iana
 
 from .languages import (
     ISOLanguage,
@@ -24,7 +22,6 @@ from .languages import (
 )
 from .regions import Region
 from .scripts import Script
-from .utils import choice_from_iana
 
 
 class IANASubtagRegistryManager(models.Manager["IANASubtagRegistry"]):
@@ -85,7 +82,8 @@ class IANASubtagRegistryManager(models.Manager["IANASubtagRegistry"]):
                     LanguageTag.objects.create(lang=subtag)
             elif record_type == "script":
                 ScriptSubtag.objects.create(
-                    iana=iana, code=record.one("Subtag")
+                    iana=iana,
+                    script=Script.objects.get(code=record.one("Subtag")),
                 )
             elif record_type == "region":
                 RegionSubtag.objects.create(
@@ -97,10 +95,10 @@ class IANASubtagRegistryManager(models.Manager["IANASubtagRegistry"]):
                 )
             elif record_type == "grandfathered":
                 for tag_str, tag_iana in tag_strs:
-                    LanguageTag.objects.from_str(
-                        tag_str,
+                    LanguageTag.objects.create_from_langtag(
+                        LangTag(tag_str),
                         bool(tag_iana.deprecated),
-                        defaults={"iana": tag_iana},
+                        iana=tag_iana,
                     )
                 tag_strs = []
                 tag = LanguageTag.objects.create(
@@ -109,13 +107,16 @@ class IANASubtagRegistryManager(models.Manager["IANASubtagRegistry"]):
                 )
                 tag.save()
             elif record_type == "redundant":
-                LanguageTag.objects.from_str(
+                tag, created = LanguageTag.objects.get_or_create_from_str(
                     record.one("Tag"),
                     allow_deprecated=bool(iana.deprecated),
                     defaults={
                         "iana": iana,
                     },
                 )
+                if not created:
+                    tag.iana = iana
+                    tag.save()
             for prefix in record.get("Prefix", []):
                 tag_strs.append(
                     (
@@ -137,8 +138,13 @@ class IANASubtagRegistry(models.Model):
     https://www.iana.org/assignments/language-subtag-registry/language-subtag-registry.
     """
 
+    records: "models.manager.RelatedManager[IANASubtagRecord]"
+    """"""
+
     file_date = models.DateField(unique=True)
+    """"""
     saved = models.DateTimeField()
+    """Time registry was saved."""
 
     def __str__(self) -> str:
         return f"{self.file_date} / {self.saved}"
@@ -155,13 +161,19 @@ class IANASubtagRecord(models.Model):
     """
 
     descriptions: "models.manager.RelatedManager[IANASubtagDescription]"
+    """"""
     registry = models.ForeignKey(
         IANASubtagRegistry,
+        related_name="records",
         on_delete=models.CASCADE,
     )
+    """"""
     deprecated = models.DateField(null=True)
+    """Date deprecated."""
     added = models.DateField()
+    """Date added."""
     comments = models.TextField(null=True)
+    """"""
     pref_value = models.CharField("preferred value", null=True, max_length=42)
     """Preferred value."""
 
@@ -181,8 +193,11 @@ class IANASubtagDescription(models.Model):
         related_name="descriptions",
         on_delete=models.CASCADE,
     )
+    """IANA subtag record."""
     text = models.CharField(max_length=75)
+    """"""
     index = models.PositiveSmallIntegerField(default=0)
+    """"""
 
     def __str__(self) -> str:
         return self.text
@@ -195,8 +210,10 @@ class IANASubtagDescription(models.Model):
 class SubtagFromIANARecord(models.Model):
     iana = models.OneToOneField(
         IANASubtagRecord,
+        related_name="+",
         on_delete=models.CASCADE,
     )
+    """IANA (sub)tag record."""
 
     class Meta:
         abstract = True
@@ -211,17 +228,24 @@ class LangSubtagFromIANARecord(SubtagFromIANARecord):
         # PRIVATE_USE = 'P', 'private use'
 
     code = models.CharField(unique=True, max_length=3)
+    """ISO 639 or registered code."""
     macrolanguage = models.CharField(max_length=3, null=True)
+    """"""
     scope = models.CharField(
         choices=Scope.choices,
         default=Scope.INDIVIDUAL,
         max_length=1,
     )
+    """Classification."""
     suppress_script = models.ForeignKey(
         Script,
         null=True,
         on_delete=models.SET_NULL,
     )
+    """Script used to write
+    the overwhelming majority of
+    documents in this language.
+    """
 
     def __str__(self) -> str:
         return self.code
@@ -237,18 +261,21 @@ class LanguageSubtag(LangSubtagFromIANARecord):
         null=True,
         on_delete=models.CASCADE,
     )
+    """"""
     iso_lang = models.OneToOneField(
         ISOLanguage,
         related_name="subtag",
         null=True,
         on_delete=models.CASCADE,
     )
+    """"""
     iso_lang_collection = models.OneToOneField(
         SimpleISOLanguageCollection,
         related_name="subtag",
         null=True,
         on_delete=models.CASCADE,
     )
+    """"""
 
     def save(self, *args, **kwargs) -> None:
         if self.scope == self.Scope.COLLECTION:
@@ -283,6 +310,7 @@ class ExtlangSubtag(LangSubtagFromIANARecord):
         null=True,
         on_delete=models.CASCADE,
     )
+    """"""
 
     def save(self, *args, **kwargs) -> None:
         if not self.iso_lang:
@@ -297,34 +325,31 @@ class ExtlangSubtag(LangSubtagFromIANARecord):
 
 
 class ScriptSubtag(SubtagFromIANARecord):
-    code = models.CharField(unique=True, max_length=4)
-    ext_data = models.OneToOneField(
+    """"""
+
+    script = models.OneToOneField(
         Script,
         related_name="subtag",
-        null=True,
-        on_delete=models.SET_NULL,
+        on_delete=models.CASCADE,
     )
-
-    def save(self, *args, **kwargs) -> None:
-        if self.ext_data is None:
-            try:
-                self.ext_data = Script.objects.get(code=self.code)
-            except Script.DoesNotExist:
-                warnings.warn(f"could not find script of code '{self.code}'")
-        super().save(*args, **kwargs)
+    """External ISO-15924 data from unicode.org."""
 
     def __str__(self) -> str:
-        return self.code
+        return self.script.code
 
 
 class RegionSubtag(SubtagFromIANARecord):
+    """"""
+
     code = models.CharField(unique=True, max_length=3)
+    """"""
     ext_data = models.OneToOneField(
         Region,
         null=True,
         related_name="subtag",
         on_delete=models.SET_NULL,
     )
+    """External UN M.49 and ISO 3166 data."""
 
     def save(self, *args, **kwargs) -> None:
         if self.ext_data is None:
@@ -342,7 +367,10 @@ class RegionSubtag(SubtagFromIANARecord):
 
 
 class VariantSubtag(SubtagFromIANARecord):
+    """"""
+
     text = models.CharField(unique=True, max_length=8)
+    """"""
 
     def __str__(self) -> str:
         return self.text
@@ -350,147 +378,160 @@ class VariantSubtag(SubtagFromIANARecord):
 
 class LanguageTagQuerySet(models.QuerySet["LanguageTag"]):
     def private(self) -> "LanguageTagQuerySet":
-        return self.exclude(lang__isnull=True, private__isnull=False)
+        """Private tags (not langtags with a private subtag)."""
+        return self.filter(lang__isnull=True, private__isnull=False)
+
+    def get_from_lite(
+        self, lite: LanguageTagLite, allow_deprecated=False
+    ) -> LanguageTag:
+        if lite.private:
+            return self.get(lang__isnull=True, private=lite.private)
+        queryset = self
+        if not allow_deprecated:
+            queryset = self.exclude(iana__deprecated__isnull=True)
+        if lite.grandfathered:
+            return queryset.get(grandfathered_tag=lite.grandfathered)
+        if lite.langtag is None:
+            raise ValueError("empty language tag")
+        if not allow_deprecated:
+            for subtag in ["extlang", "script", "region"]:
+                if getattr(lite.langtag, subtag):
+                    queryset = queryset.filter(
+                        **{f"{subtag}__iana__deprecated__isnull": True}
+                    )
+        if lite.langtag.variants:
+            tag_variants_qs = (
+                models.Q(variants__text=variant)
+                for variant in lite.langtag.variants
+            )
+            queryset = queryset.filter(reduce(operator.and_, tag_variants_qs))
+        queryset = queryset.exclude(
+            variants_through__index=len(lite.langtag.variants)
+        )
+        if lite.langtag.extensions:
+            extension_qs = (
+                models.Q(
+                    texts=reduce(
+                        operator.and_,
+                        (
+                            models.Q(index=i, text__iexact=text)
+                            for i, text in enumerate(val.texts)
+                        ),
+                    ),
+                    index=i,
+                    singleton__iexact=val.singleton,
+                )
+                for i, val in enumerate(lite.langtag.extensions)
+            )
+            queryset = queryset.filter(
+                extensions=reduce(operator.and_, extension_qs)
+            )
+        queryset = queryset.exclude(
+            extensions__index=len(lite.langtag.extensions)
+        )
+        return queryset.get(
+            lang__code=lite.langtag.lang,
+            extlang__code=lite.langtag.extlang,
+            script__script__code=lite.langtag.script,
+            region__code=lite.langtag.region,
+            private=lite.langtag.private,
+        )
+
+    def get_from_str(
+        self, string: str | re.Match[str], allow_deprecated=False
+    ) -> LanguageTag:
+        return self.get_from_lite(LanguageTagLite(string), allow_deprecated)
 
 
 class LanguageTagManager(models.Manager["LanguageTag"]):
+    """"""
+
     def get_queryset(self) -> LanguageTagQuerySet:
         return LanguageTagQuerySet(self.model, using=self._db)
 
     def private(self) -> LanguageTagQuerySet:
         return self.get_queryset().private()
 
-    def from_str(
-        self,
-        tag_str: str,
-        allow_deprecated=False,
-        allow_create=True,
-        defaults: dict[str, Any] = dict(),
-    ) -> "LanguageTag":
-        iana_kwargs = dict()
+    def get_from_lite(
+        self, lite: LanguageTagLite, allow_deprecated=False
+    ) -> LanguageTag:
+        return self.get_queryset().get_from_lite(lite, allow_deprecated)
+
+    def get_from_str(
+        self, string: str | re.Match[str], allow_deprecated=False
+    ) -> LanguageTag:
+        return self.get_queryset().get_from_str(string, allow_deprecated)
+
+    def create_from_langtag(
+        self, langtag: LangTag, allow_deprecated=False, **kwargs
+    ) -> LanguageTag:
+        subtag_kwargs = dict()
         if not allow_deprecated:
-            iana_kwargs["iana__deprecated"] = None
-        try:
-            return self.get(grandfathered_tag__iexact=tag_str, **iana_kwargs)
-        except self.model.DoesNotExist as e:
-            pass
-
-        match = LANGUAGE_TAG_RE[COMPLIANT].fullmatch(tag_str)
-        if not match:
-            raise ValueError(f"'{tag_str}' is not a valid language tag")
-        groups = match.groupdict(None)
-        if groups["private_tag"]:
-            private_tag = groups["private_tag"].removeprefix("x-")
-            try:
-                return self.get(lang__isnull=True, private_iexact=private_tag)
-            except self.model.DoesNotExist as e:
-                if not allow_create:
-                    raise e
-                return self.create(private_tag=private_tag, **defaults)
-
-        lang = LanguageSubtag.objects.get(
-            code__iexact=groups["iso_639"], **iana_kwargs
+            subtag_kwargs["iana__deprecated__isnull"] = True
+        tag = self.model(**kwargs)
+        tag.lang = LanguageSubtag.objects.get(
+            code=langtag.lang,
+            **subtag_kwargs,
         )
-        extlang = None
-        if groups["extlang"]:
-            extlang = ExtlangSubtag.objects.get(
-                code__iexact=groups["extlang_iso_639"], **iana_kwargs
+        if langtag.extlang:
+            tag.extlang = ExtlangSubtag.objects.get(
+                code=langtag.extlang,
+                **subtag_kwargs,
             )
-        region = None
-        if groups["region"]:
-            region = RegionSubtag.objects.get(
-                code__iexact=groups["region"], **iana_kwargs
+        if langtag.script:
+            tag.script = ScriptSubtag.objects.get(
+                script__code=langtag.script,
+                **subtag_kwargs,
             )
-        script = None
-        if groups["script"]:
-            script = ScriptSubtag.objects.get(
-                code__iexact=groups["script"], **iana_kwargs
+        if langtag.region:
+            tag.region = RegionSubtag.objects.get(
+                code=langtag.region,
+                **subtag_kwargs,
             )
-        private_subtag = None
-        if groups["private_subtag"]:
-            private_subtag = groups["private_subtag"].removeprefix("x-")
-        queryset = self.filter(
-            lang=lang,
-            extlang=extlang,
-            region=region,
-            script=script,
-            private__iexact=private_subtag,
-        )
-        variants = []
-        if groups["variants"]:
-            for variant in split_subtags(groups["variants"]):
-                variants.append(
-                    VariantSubtag.objects.get(text__iexact=variant)
-                )
-            variants_qs = (models.Q(variants=variant) for variant in variants)
-            queryset = queryset.filter(reduce(operator.and_, variants_qs))
-        extensions = []
-        if groups["extensions"]:
-            for extension in split_subtags(groups["extensions"]):
-                ext_match: re.Match = re.fullmatch(
-                    EXTENSION_P, extension
-                )  # type: ignore
-                extensions.append(
-                    {
-                        "singleton": ext_match.group("singleton"),
-                        "texts": split_subtags(ext_match.group("ext_text")),
-                    }
-                )
-            extensions_qs = (
-                models.Q(
-                    extensions=ExtensionSubtag(
-                        reduce(
-                            operator.and_,
-                            (
-                                models.Q(index=i, text__iexact=text)
-                                for i, text in enumerate(val["texts"])
-                            ),
-                        ),
-                        index=i,
-                        singleton__iexact=val["singleton"],
-                    )
-                )
-                for i, val in enumerate(extensions)
+        tag.save()
+        for i, variant in enumerate(langtag.variants):
+            LanguageTagVariantSubtag.objects.create(
+                tag=tag,
+                variant=VariantSubtag.objects.get(text=variant),
+                index=i,
             )
-            queryset = queryset.filter(reduce(operator.and_, extensions_qs))
-        queryset = queryset.exclude(variants_through__index=len(variants))
-        queryset = queryset.exclude(extensions__index=len(extensions))
-        try:
-            return queryset.get()
-        except self.model.DoesNotExist as e:
-            if not allow_create:
-                raise e
-            tag = self.create(
-                lang=lang,
-                extlang=extlang,
-                region=region,
-                script=script,
-                private=private_subtag,
-                **defaults,
+        for i, extension in enumerate(langtag.extensions):
+            ext_obj = ExtensionSubtag.objects.create(
+                tag=tag,
+                singleton=extension.singleton,
+                index=i,
             )
-            for i, variant in enumerate(variants):
-                LanguageTagVariantSubtag.objects.create(
-                    tag=tag,
-                    variant=variant,
+            for i, text in extension.texts:
+                ExtensionSubtagText.objects.create(
+                    extension=ext_obj,
+                    text=text,
                     index=i,
                 )
-            for i, extension in enumerate(extensions):
-                ext_obj = ExtensionSubtag.objects.create(
-                    tag=tag,
-                    singleton=extension["singleton"],
-                    index=i,
-                )
-                for i, text in enumerate(extension["text"]):
-                    ExtensionSubtagText.objects.create(
-                        extension=ext_obj,
-                        text=text,
-                        index=i,
-                    )
-            return tag
+        return tag
 
-    def native(self) -> "LanguageTag":
-        native_lang = self.from_str(settings.LANGUAGE_CODE)
-        return native_lang
+    def get_or_create_from_str(
+        self,
+        string: str | re.Match[str],
+        allow_deprecated=False,
+        defaults: dict[str, Any] = dict(),
+    ) -> Tuple[LanguageTag, bool]:
+        lite = LanguageTagLite(string)
+        try:
+            return self.get_from_lite(lite, allow_deprecated), False
+        except self.model.DoesNotExist:
+            if lite.langtag:
+                return (
+                    self.create_from_langtag(
+                        lite.langtag, allow_deprecated, **defaults
+                    ),
+                    True,
+                )
+            else:
+                raise ValueError(f"language tag '{string}' is not a langtag")
+
+    def native(self) -> LanguageTag:
+        """Returns a LanguageTag from `settings.LANGUAGE_CODE`"""
+        return self.get_from_str(settings.LANGUAGE_CODE)
 
 
 class LanguageTag(models.Model):
@@ -500,33 +541,41 @@ class LanguageTag(models.Model):
     """
 
     variants_through: "models.manager.RelatedManager[LanguageTagVariantSubtag]"
+    """"""
     extensions: "models.manager.RelatedManager[ExtensionSubtag]"
+    """"""
     iana = models.ForeignKey(
         IANASubtagRecord,
         null=True,
         on_delete=models.CASCADE,
     )
+    """Original IANA (sub)tag record."""
     grandfathered_tag = models.CharField(null=True, max_length=42)
+    """"""
     lang = models.ForeignKey(
         LanguageSubtag,
         null=True,
         on_delete=models.PROTECT,
     )
+    """Language subtag."""
     extlang = models.ForeignKey(
         ExtlangSubtag,
         null=True,
         on_delete=models.PROTECT,
     )
+    """Extlang subtag."""
     script = models.ForeignKey(
         ScriptSubtag,
         null=True,
         on_delete=models.PROTECT,
     )
+    """Script subtag."""
     region = models.ForeignKey(
         RegionSubtag,
         null=True,
         on_delete=models.PROTECT,
     )
+    """Region subtag."""
     variants = models.ManyToManyField(
         VariantSubtag,
         through="LanguageTagVariantSubtag",
@@ -536,16 +585,18 @@ class LanguageTag(models.Model):
         null=True,
         max_length=42,
     )
+    """Private tag or subtag."""
 
     @property
     def is_private(self) -> bool:
         return self.lang is None and self.private is not None
 
     @cached_property
-    def pref_tag(self) -> "LanguageTag":
+    def pref_tag(self) -> LanguageTag:
+        """Preferred tag as defined in the IANA registry, or `self`."""
         if not (self.iana and self.iana.pref_value):
             return self
-        return self.__class__.objects.from_str(self.iana.pref_value)
+        return self.__class__.objects.get_from_str(self.iana.pref_value)
 
     @cached_property
     def tag_str(self) -> str:
@@ -582,7 +633,7 @@ class LanguageTag(models.Model):
         if self.region:
             parts.append("as used in")
             parts.append(self.region.iana.first_description())
-        if self.script:
+        if self.script and self.script.code != self.lang.suppress_script:  # type: ignore
             parts.append("as written in")
             parts.append(self.script.iana.first_description())
 
@@ -614,12 +665,15 @@ class LanguageTagVariantSubtag(models.Model):
         related_name="variants_through",
         on_delete=models.CASCADE,
     )
+    """"""
     variant = models.ForeignKey(
         VariantSubtag,
         related_name="tags_through",
         on_delete=models.CASCADE,
     )
+    """"""
     index = models.PositiveSmallIntegerField(default=0)
+    """"""
 
     class Meta:
         unique_together = (("tag", "index"), ("tag", "variant"))
@@ -627,16 +681,21 @@ class LanguageTagVariantSubtag(models.Model):
 
 
 class ExtensionSubtag(models.Model):
+    texts: "models.manager.RelatedManager[ExtensionSubtagText]"
+    """"""
     tag = models.ForeignKey(
         LanguageTag,
         related_name="extensions",
         on_delete=models.CASCADE,
     )
+    """"""
     singleton = models.CharField(max_length=1)
+    """"""
     index = models.PositiveSmallIntegerField(default=0)
+    """"""
 
     def __str__(self) -> str:
-        texts = self.texts.order_by("index")  # type: ignore
+        texts = self.texts.order_by("index")
         return "-".join([self.singleton, *map(str, texts)])
 
     class Meta:
@@ -650,8 +709,11 @@ class ExtensionSubtagText(models.Model):
         related_name="texts",
         on_delete=models.CASCADE,
     )
+    """"""
     text = models.CharField(max_length=8)
+    """"""
     index = models.PositiveSmallIntegerField(default=0)
+    """"""
 
     def __str__(self) -> str:
         return self.text

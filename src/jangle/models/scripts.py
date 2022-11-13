@@ -3,12 +3,14 @@ import csv
 import requests
 from django.db import models
 
-from .utils import BatchedCreateManager
+from jangle.utils import BatchedCreateManager
 
 
 class ScriptManager(BatchedCreateManager["Script"]):
     def register(self, clear=True, batch_size=64) -> None:
-        """Saves IS0 15924 scripts from unicode.org to the database."""
+        """Saves IS0 15924 scripts from unicode.org to the database.
+        See https://www.unicode.org/iso15924/iso15924.txt.
+        """
         r = requests.get("https://www.unicode.org/iso15924/iso15924.txt")
         r.raise_for_status()
 
@@ -43,10 +45,9 @@ class ScriptManager(BatchedCreateManager["Script"]):
 
 
 class Script(models.Model):
-    """Represents an ISO 15924 script.
-    From https://www.unicode.org/iso15924/,
+    """Represents an ISO 15924 script,
+    saved from https://www.unicode.org/iso15924/.
     """
-
     code = models.CharField("ISO 15924 code", unique=True, max_length=4)
     """ISO 15924 code."""
     no = models.PositiveSmallIntegerField("ISO 15924 number", unique=True)
@@ -56,9 +57,13 @@ class Script(models.Model):
     names_fr = models.CharField("noms français", unique=True, max_length=75)
     """French names."""
     pva = models.CharField("property value alias", null=True, max_length=150)
-    """Property value alias."""
+    """Unicode property value alias.
+    See https://www.unicode.org/Public/UCD/latest/ucd/PropertyValueAliases.txt.
+    """
     unicode_version = models.CharField(null=True, max_length=12)
-    script_date = models.DateField()
+    """"""
+    script_date = models.DateField("date")
+    """Date."""
 
     @property
     def no_str(self) -> str:

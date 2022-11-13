@@ -5,7 +5,7 @@ from .languages import ISOLanguage
 
 class Region(models.Model):
     names: "models.manager.RelatedManager[RegionName]"
-
+    """"""
     class Tier(models.IntegerChoices):
         GLOBAL = 0, "global"
         REGIONAL = 1, "regional"
@@ -15,6 +15,7 @@ class Region(models.Model):
         COUNTRY = 5, "country or area"
 
     tier = models.PositiveSmallIntegerField(choices=Tier.choices)
+    """Classification."""
     no = models.PositiveSmallIntegerField(
         "ISO 3166-1 numeric / UN M.49 code",
         unique=True,
@@ -25,6 +26,7 @@ class Region(models.Model):
         null=True,
         on_delete=models.CASCADE,
     )
+    """Parent region encompassing this one, if existing."""
 
     @property
     def no_str(self) -> str:
@@ -44,7 +46,9 @@ class RegionName(models.Model):
         related_name="names",
         on_delete=models.CASCADE,
     )
+    """"""
     name = models.TextField(max_length=150)
+    """"""
     iso_lang = models.ForeignKey(
         ISOLanguage,
         on_delete=models.PROTECT,
@@ -63,6 +67,7 @@ class ISORegion(models.Model):
         related_name="iso",
         on_delete=models.CASCADE,
     )
+    """"""
     alpha_2 = models.CharField(
         "ISO 3166-1 alpha-2 code",
         unique=True,
@@ -76,20 +81,20 @@ class ISORegion(models.Model):
     )
     """ISO 3166-1 alpha-3 code."""
     in_ldc = models.BooleanField(
-        "Least Developing Countries",
+        "Least Developed Countries",
         default=False,
     )
-    """In UN Least Developing Countries."""
+    """In UN Least Developed Countries (LDC)."""
     in_lldc = models.BooleanField(
         "Land Locked Developing Countries",
         default=False,
     )
-    """In UN Least Land Locked Developing Countries."""
+    """In UN Land Locked Developing Countries (LLDC)."""
     in_sids = models.BooleanField(
         "Small Island Developing States",
         default=False,
     )
-    """In UN Small Island Developing States."""
+    """In UN Small Island Developing States (SIDS)."""
 
     def __str__(self) -> str:
         return str(self.region)

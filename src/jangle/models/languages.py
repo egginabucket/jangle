@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import csv
 import warnings
 from typing import Optional
@@ -8,8 +10,7 @@ from django.db import models
 from requests.compat import urljoin
 
 from jangle.readers import SilTableReader
-
-from .utils import BatchedCreateManager
+from jangle.utils import BatchedCreateManager
 
 
 class InvalidISO639Error(ValueError):
@@ -17,7 +18,7 @@ class InvalidISO639Error(ValueError):
 
 
 class ISOLanguageCodesManager(BatchedCreateManager["ISOLanguageCodes"]):
-    def get_from_ietf(self, code: str) -> "ISOLanguageCodes":
+    def get_from_ietf(self, code: str) -> ISOLanguageCodes:
         if len(code) == 2:
             return self.get(part_1=code)
         elif len(code) == 3:
@@ -68,9 +69,12 @@ class ISOLanguageCodesManager(BatchedCreateManager["ISOLanguageCodes"]):
 
 
 class ISOLanguageCodes(models.Model):
-    """ISO 639-2 and 639-1 language codeset."""
+    """ISO 639-2 and 639-1 language codeset,
+    saved from the Library of Congress.
+    """
 
-    language: Optional["ISOLanguage"]
+    language: Optional[ISOLanguage]
+    """"""
     part_2b = models.CharField(
         "bibliographic code (ISO 639-2/B)",
         unique=True,
@@ -94,13 +98,17 @@ class ISOLanguageCodes(models.Model):
         unique=True,
         max_length=75,
     )
-    """English names."""
+    """English names.
+    Separated with ";" if multiple exist.
+    """
     names_fr = models.CharField(
         "English names",
         unique=True,
         max_length=75,
     )
-    """French names."""
+    """French names.
+    Separated with ";" if multiple exist.
+    """
 
     @property
     def ietf(self) -> str:
@@ -119,7 +127,7 @@ class ISOLanguageCodes(models.Model):
 class SimpleISOLanguageCollectionManager(
     BatchedCreateManager["SimpleISOLanguageCollection"]
 ):
-    def get_from_ietf(self, code: str) -> "SimpleISOLanguageCollection":
+    def get_from_ietf(self, code: str) -> SimpleISOLanguageCollection:
         return self.get(part_5=code)
 
     def register(self, clear=True, batch_size=64) -> None:
@@ -159,18 +167,22 @@ class SimpleISOLanguageCollection(models.Model):
         unique=True,
         max_length=75,
     )
-    """English names."""
+    """English names.
+    Separated with ";" if multiple exist.
+    """
     names_fr = models.CharField(
         "noms français",
         unique=True,
         max_length=75,
     )
-    """French names."""
+    """French names.
+    Separated with ";" if multiple exist.
+    """
 
     @property
     def loc_uri(self) -> str:
         """URI on the Library of Congress.
-        Contains MADS/SKOS RDFS data.
+        Contains MADS/SKOS RDF data.
         """
         return urljoin("http://id.loc.gov/vocabulary/iso639-5", self.part_5)
 
@@ -189,16 +201,16 @@ class SimpleISOLanguageCollection(models.Model):
 
 
 class ISOLanguageQuerySet(models.QuerySet["ISOLanguage"]):
-    def macrolanguages(self) -> "ISOLanguageQuerySet":
+    def macrolanguages(self) -> ISOLanguageQuerySet:
         return self.filter(scope=ISOLanguage.Scope.MACROLANGUAGE)
 
-    def individuals(self) -> "ISOLanguageQuerySet":
+    def individuals(self) -> ISOLanguageQuerySet:
         return self.filter(scope=ISOLanguage.Scope.INDIVIDUAL)
 
-    def specials(self) -> "ISOLanguageQuerySet":
+    def specials(self) -> ISOLanguageQuerySet:
         return self.filter(scope=ISOLanguage.Scope.SPECIAL)
 
-    def get_from_ietf(self, code: str) -> "ISOLanguage":
+    def get_from_ietf(self, code: str) -> ISOLanguage:
         if len(code) == 2:
             return self.get(codes__part_1=code)
         elif len(code) == 3:
@@ -225,7 +237,7 @@ class ISOLanguageManager(BatchedCreateManager["ISOLanguage"]):
     def specials(self) -> ISOLanguageQuerySet:
         return self.get_queryset().specials()
 
-    def get_from_ietf(self, code: str) -> "ISOLanguage":
+    def get_from_ietf(self, code: str) -> ISOLanguage:
         return self.get_queryset().get_from_ietf(code)
 
     def register(
@@ -276,7 +288,8 @@ class ISOLanguageManager(BatchedCreateManager["ISOLanguage"]):
 
 
 class ISOLanguage(models.Model):
-    """Represents an ISO 639-3 language."""
+    """Represents an ISO 639-3 language,
+    saved from SIL international"""
 
     class LanguageType(models.TextChoices):
         ANCIENT = "A", "ancient"
@@ -291,6 +304,8 @@ class ISOLanguage(models.Model):
         MACROLANGUAGE = "M", "macrolanguage"
         SPECIAL = "S", "special"
 
+    names: "models.manager.RelatedManager[ISOLanguageName]"
+    """"""
     codes = models.OneToOneField(
         ISOLanguageCodes,
         related_name="language",
@@ -318,8 +333,9 @@ class ISOLanguage(models.Model):
     )
     """Type."""
     scope = models.CharField(choices=Scope.choices, max_length=1)
+    """"""
     comment = models.CharField(null=True, max_length=150)
-
+    """"""
     macrolanguage = models.ForeignKey(
         "self",
         related_name="individuals",
@@ -365,8 +381,8 @@ class ISOLanguageNameManager(BatchedCreateManager["ISOLanguageName"]):
 
 
 class ISOLanguageName(models.Model):
-    """Represents an English name from SIL
-    for an ISO 639-3 language.
+    """Represents an English name for an ISO 639-3 language,
+    saved from SIL International.
     """
 
     iso_lang = models.ForeignKey(
@@ -374,14 +390,17 @@ class ISOLanguageName(models.Model):
         related_name="names",
         on_delete=models.CASCADE,
     )
+    """ISO Language."""
     printable = models.CharField(
         "printable translated name",
         max_length=75,
     )
+    """Printable translated name."""
     inverted = models.CharField(
         "inverted translated name",
         max_length=75,
     )
+    """Inverted translated name."""
 
     def __str__(self) -> str:
         return self.printable
