@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import csv
 import io
 import os
@@ -9,9 +11,9 @@ import requests
 from requests.compat import urljoin
 from requests.models import ITER_CHUNK_SIZE
 
-
 T = TypeVar("T")
 
+IANA_ASSIGNMENTS_URL = "https://www.iana.org/assignments/"
 SIL_ISO_639_DOWNLOADS_URL = (
     "https://iso639-3.sil.org/sites/iso639-3/files/downloads/"
 )
@@ -129,7 +131,7 @@ class SilTableReader:
         elif self._r:
             self._r.close()
 
-    def __enter__(self) -> "SilTableReader":
+    def __enter__(self) -> SilTableReader:
         return self
 
     def __exit__(self, exc_type, exc_value, traceback) -> None:
@@ -145,7 +147,7 @@ class IANARegistryReader:
 
     def __init__(self, fn: str) -> None:
         response = requests.get(
-            urljoin("https://www.iana.org/assignments/", "/".join([fn, fn])),
+            urljoin(IANA_ASSIGNMENTS_URL, "/".join([fn, fn])),
             stream=True,
         )
         response.raise_for_status()
