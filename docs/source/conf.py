@@ -22,7 +22,8 @@ from sphinx.application import Sphinx
 from jangle import __about__
 
 project = "jangle"
-copyright = f"{datetime.now().year}, {__about__.__author__}"
+year = datetime.now().year
+copyright = f"{year} {__about__.__author__}"
 author = __about__.__author__
 release = __about__.__version__
 
@@ -40,11 +41,19 @@ exclude_patterns = []
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
 html_theme = "alabaster"
+html_theme_options = {
+    "description": "IETF BCP 47 / RFC 5646 language tags in Django",
+    "github_user": "egginabucket",
+    "github_repo": "jangle",
+}
+
 html_static_path = ["_static"]
 
 html_css_files = [
     "style/custom.css",
 ]
+
+autodoc_member_order = "bysource"
 
 
 def setup(app: Sphinx) -> None:
