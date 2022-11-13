@@ -681,6 +681,8 @@ class LanguageTagVariantSubtag(models.Model):
 
 
 class ExtensionSubtag(models.Model):
+    """"""
+
     texts: "models.manager.RelatedManager[ExtensionSubtagText]"
     """"""
     tag = models.ForeignKey(
@@ -704,6 +706,8 @@ class ExtensionSubtag(models.Model):
 
 
 class ExtensionSubtagText(models.Model):
+    """"""
+
     extension = models.ForeignKey(
         ExtensionSubtag,
         related_name="texts",
