@@ -1,9 +1,12 @@
-from typing import TypeVar, Any, Optional, Iterable
+import re
 from itertools import islice
+from typing import Any, Iterable, Optional, TypeVar
+
 from django.db import models
 
 
 def findattr(obj, path) -> Optional[Any]:
+    """This thing is goofy. Don't use it."""
     if isinstance(path, tuple):
         for subpath in path:
             attr = findattr(obj, subpath)
@@ -23,7 +26,8 @@ def findattr(obj, path) -> Optional[Any]:
         )
 
 
-def choice_from_iana(choices: type[models.TextChoices], string: str):
+def choice_from_iana(choices: type[models.TextChoices], string: str) -> Any:
+    """Chooses a Django TextChoices field from text used in the IANA registry."""
     return getattr(choices, string.upper().replace("-", "_"))
 
 
@@ -31,6 +35,8 @@ _T = TypeVar("_T", bound=models.Model)
 
 
 class BatchedCreateManager(models.Manager[_T]):
+    """"""
+
     def batched_create(self, objs: Iterable, batch_size=64, **kwargs) -> None:
         """Bulk-creates objects in batches of specified size."""
         while True:
@@ -38,3 +44,8 @@ class BatchedCreateManager(models.Manager[_T]):
             if not batch:
                 break
             self.bulk_create(batch, batch_size, **kwargs)
+
+
+def split_subtags(string: str) -> list[str]:
+    """Splits a tag or string of subtags."""
+    return re.split(r"(?<!(?<![^\-\s])[^\-\s])[\-\s]", string.strip("-"))
