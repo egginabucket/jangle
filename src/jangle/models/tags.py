@@ -11,8 +11,8 @@ from django.conf import settings
 from django.db import models
 from django.utils.timezone import utc
 
+import jangle.lite
 from jangle.readers import IANASubtagRegistryReader
-from jangle.lite import LangTag, LanguageTagLite
 from jangle.utils import choice_from_iana
 
 from .languages import (
@@ -96,7 +96,7 @@ class IANASubtagRegistryManager(models.Manager["IANASubtagRegistry"]):
             elif record_type == "grandfathered":
                 for tag_str, tag_iana in tag_strs:
                     LanguageTag.objects.create_from_langtag(
-                        LangTag(tag_str),
+                        jangle.lite.LangTag.from_str(tag_str),
                         bool(tag_iana.deprecated),
                         iana=tag_iana,
                     )
@@ -377,28 +377,30 @@ class VariantSubtag(SubtagFromIANARecord):
 
 
 class LanguageTagQuerySet(models.QuerySet["LanguageTag"]):
-    def private(self) -> "LanguageTagQuerySet":
+    def active(self) -> LanguageTagQuerySet:
+        """Excludes all deprecated tags and tags with
+        deprecated subtags, according to the IANA subtag registry.
+        """
+        return self.exclude(
+            iana__deprecated__isnull=False,
+            **{
+                f"{subtag}__iana__deprecated__isnull": False
+                for subtag in ["extlang", "script", "region", "variants"]
+            },
+        )
+
+    def private(self) -> LanguageTagQuerySet:
         """Private tags (not langtags with a private subtag)."""
         return self.filter(lang__isnull=True, private__isnull=False)
 
-    def get_from_lite(
-        self, lite: LanguageTagLite, allow_deprecated=False
-    ) -> LanguageTag:
+    def get_from_lite(self, lite: jangle.lite.LanguageTag) -> LanguageTag:
         if lite.private:
             return self.get(lang__isnull=True, private=lite.private)
-        queryset = self
-        if not allow_deprecated:
-            queryset = self.exclude(iana__deprecated__isnull=True)
         if lite.grandfathered:
-            return queryset.get(grandfathered_tag=lite.grandfathered)
+            return self.get(grandfathered_tag=lite.grandfathered)
+        queryset = self
         if lite.langtag is None:
             raise ValueError("empty language tag")
-        if not allow_deprecated:
-            for subtag in ["extlang", "script", "region"]:
-                if getattr(lite.langtag, subtag):
-                    queryset = queryset.filter(
-                        **{f"{subtag}__iana__deprecated__isnull": True}
-                    )
         if lite.langtag.variants:
             tag_variants_qs = (
                 models.Q(variants__text=variant)
@@ -437,10 +439,11 @@ class LanguageTagQuerySet(models.QuerySet["LanguageTag"]):
             private=lite.langtag.private,
         )
 
-    def get_from_str(
-        self, string: str | re.Match[str], allow_deprecated=False
-    ) -> LanguageTag:
-        return self.get_from_lite(LanguageTagLite(string), allow_deprecated)
+    def get_from_match(self, match: re.Match[str]) -> LanguageTag:
+        return self.get_from_lite(jangle.lite.LanguageTag.from_match(match))
+
+    def get_from_str(self, string: str) -> LanguageTag:
+        return self.get_from_lite(jangle.lite.LanguageTag.from_str(string))
 
 
 class LanguageTagManager(models.Manager["LanguageTag"]):
@@ -452,18 +455,20 @@ class LanguageTagManager(models.Manager["LanguageTag"]):
     def private(self) -> LanguageTagQuerySet:
         return self.get_queryset().private()
 
-    def get_from_lite(
-        self, lite: LanguageTagLite, allow_deprecated=False
-    ) -> LanguageTag:
-        return self.get_queryset().get_from_lite(lite, allow_deprecated)
+    def active(self) -> LanguageTagQuerySet:
+        return self.get_queryset().active()
 
-    def get_from_str(
-        self, string: str | re.Match[str], allow_deprecated=False
-    ) -> LanguageTag:
-        return self.get_queryset().get_from_str(string, allow_deprecated)
+    def get_from_lite(self, lite: jangle.lite.LanguageTag) -> LanguageTag:
+        return self.get_queryset().get_from_lite(lite)
+
+    def get_from_match(self, match: re.Match[str]) -> LanguageTag:
+        return self.get_queryset().get_from_match(match)
+
+    def get_from_str(self, string: str) -> LanguageTag:
+        return self.get_queryset().get_from_str(string)
 
     def create_from_langtag(
-        self, langtag: LangTag, allow_deprecated=False, **kwargs
+        self, langtag: jangle.lite.LangTag, allow_deprecated=False, **kwargs
     ) -> LanguageTag:
         subtag_kwargs = dict()
         if not allow_deprecated:
@@ -511,13 +516,16 @@ class LanguageTagManager(models.Manager["LanguageTag"]):
 
     def get_or_create_from_str(
         self,
-        string: str | re.Match[str],
+        string: str,
         allow_deprecated=False,
         defaults: dict[str, Any] = dict(),
     ) -> Tuple[LanguageTag, bool]:
-        lite = LanguageTagLite(string)
+        lite = jangle.lite.LanguageTag.from_str(string)
+        queryset = self.get_queryset()
+        if not allow_deprecated:
+            queryset = queryset.active()
         try:
-            return self.get_from_lite(lite, allow_deprecated), False
+            return queryset.get_from_lite(lite), False
         except self.model.DoesNotExist:
             if lite.langtag:
                 return (
@@ -526,8 +534,10 @@ class LanguageTagManager(models.Manager["LanguageTag"]):
                     ),
                     True,
                 )
+            elif lite.private:
+                return self.create(private=lite.private), True
             else:
-                raise ValueError(f"language tag '{string}' is not a langtag")
+                raise ValueError(f"cannot create grandfathered tag '{string}'")
 
     def native(self) -> LanguageTag:
         """Returns a LanguageTag from `settings.LANGUAGE_CODE`"""
@@ -626,22 +636,60 @@ class LanguageTag(models.Model):
         """English description of what the tag represents."""
         if self.iana:
             return self.iana.first_description()
-        parts = [self.lang.iana.first_description()]  # type: ignore
+        if self.lang is None:
+            if self.private is not None:
+                return f'Private tag x-"{self.private}"'
+            else:
+                raise ValueError(
+                    f"IANA record for grandfathered tag '{self}' not found"
+                )
+        parts = [self.lang.iana.first_description()]
         if self.extlang:
             parts.append("-")
             parts.append(self.extlang.iana.first_description())
         if self.region:
             parts.append("as used in")
             parts.append(self.region.iana.first_description())
-        if self.script and self.script.code != self.lang.suppress_script:  # type: ignore
+        if self.script and self.script.script != self.lang.suppress_script:
             parts.append("as written in")
             parts.append(self.script.iana.first_description())
-
         for variant in self.variants_through.order_by("index"):
             parts.append("-")
             parts.append(variant.variant.iana.first_description())
         parts.extend(map(str, self.extensions.order_by("index")))
         return " ".join(parts)
+
+    def lite(self) -> jangle.lite.LanguageTag:
+        lite = jangle.lite.LanguageTag(
+            grandfathered=self.grandfathered_tag,
+            langtag=None,
+            private=None,
+        )
+        if self.is_private:
+            lite.private = self.private
+        elif self.lang:
+            langtag = jangle.lite.LangTag(self.lang.code, private=self.private)
+            if self.extlang:
+                langtag.extlang = self.extlang.code
+            if self.script:
+                langtag.script = self.script.script.code
+            if self.region:
+                langtag.region = self.region.code
+            langtag.variants = [
+                variant_through.variant.text
+                for variant_through in self.variants_through.order_by("index")
+            ]
+            langtag.extensions = [
+                jangle.lite.Extension(
+                    singleton=extension.singleton,
+                    texts=[
+                        text.text for text in extension.texts.order_by("index")
+                    ],
+                )
+                for extension in self.extensions.order_by("index")
+            ]
+            lite.langtag = langtag
+        return lite
 
     def __str__(self) -> str:
         return self.tag_str
@@ -660,6 +708,8 @@ class LanguageTag(models.Model):
 
 
 class LanguageTagVariantSubtag(models.Model):
+    """"""
+
     tag = models.ForeignKey(
         LanguageTag,
         related_name="variants_through",

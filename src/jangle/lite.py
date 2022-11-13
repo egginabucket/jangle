@@ -1,59 +1,70 @@
 from __future__ import annotations
 
 import re
+from dataclasses import dataclass, field
 from typing import Optional
 
 from jangle.patterns import RULES, match_rule
-from jangle.utils import split_subtags
+from jangle.utils import StrReprCls, split_subtags
 
 
-class Extension:
+@dataclass(repr=False)
+class Extension(StrReprCls):
     singleton: str
     texts: list[str]
 
-    def __init__(self, match: re.Match[str] | str) -> None:
-        if isinstance(match, str):
-            match = match_rule("extension", match)
-        self.singleton = match.group("singleton")
-        self.texts = split_subtags(match.group("ext_text"))
+    @classmethod
+    def from_match(cls, match: re.Match) -> Extension:
+        return cls(
+            singleton=match.group("singleton"),
+            texts=split_subtags(match.group("ext_text")),
+        )
+
+    @classmethod
+    def from_str(cls, string: str) -> Extension:
+        return cls.from_match(match_rule("extension", string))
 
     def __str__(self) -> str:
         return "-".join([self.singleton, *self.texts])
 
-    def __repr__(self) -> str:
-        return f"<Extension '{self}'>"
 
-
-class LangTag:
+@dataclass(repr=False)
+class LangTag(StrReprCls):
     lang: str
-    extlang: Optional[str]
-    script: Optional[str]
-    region: Optional[str]
-    variants: list[str] = []
-    extensions: list[Extension]
-    private: Optional[str]
+    extlang: Optional[str] = None
+    script: Optional[str] = None
+    region: Optional[str] = None
+    variants: list[str] = field(default_factory=list)
+    extensions: list[Extension] = field(default_factory=list)
+    private: Optional[str] = None
 
-    def __init__(self, match: re.Match[str] | str) -> None:
-        if isinstance(match, str):
-            match = match_rule("langtag", match)
-        groups = match.groupdict("")
-        self.lang = groups["iso_639"].lower()
-        self.extlang = groups["extlang"].lower() or None
-        self.script = groups["script"].title() or None
-        self.region = groups["region"].upper() or None
-        self.private = (
-            groups["private_subtag"].lower().removeprefix("x-") or None
+    @classmethod
+    def from_groups(cls, groups: dict[str, str]) -> LangTag:
+        langtag = cls(
+            lang=groups["iso_639"].lower(),
+            extlang=groups["extlang"].lower() or None,
+            script=groups["script"].title() or None,
+            region=groups["region"].upper() or None,
+            private=groups["private_subtag"].lower().removeprefix("x-")
+            or None,
         )
         if groups["variants"]:
-            self.variants = split_subtags(groups["variants"].lower())
-        else:
-            self.variants = []
-        self.extensions = list(
+            langtag.variants = split_subtags(groups["variants"].lower())
+        langtag.extensions = list(
             map(
-                Extension,
+                Extension.from_match,
                 RULES["extension"].finditer(groups["extensions"].lower()),
             )
         )
+        return langtag
+
+    @classmethod
+    def from_match(cls, match: re.Match[str]) -> LangTag:
+        return cls.from_groups(match.groupdict(""))
+
+    @classmethod
+    def from_str(cls, string: str) -> LangTag:
+        return cls.from_match(match_rule("langtag", string))
 
     def __str__(self) -> str:
         subtags = [self.lang]
@@ -74,8 +85,10 @@ class LangTag:
         return "-".join(subtags)
 
     def __contains__(self, val: LangTag | re.Match[str] | str) -> bool:
-        if isinstance(val, re.Match | str):
-            val = type(self)(val)
+        if isinstance(val, re.Match):
+            val = self.__class__.from_match(val)
+        elif isinstance(val, str):
+            val = self.__class__.from_str(val)
         if val.lang != self.lang:
             return False
         for attr_name in ["script", "extlang", "region", "private"]:
@@ -91,25 +104,28 @@ class LangTag:
                 return False
         return True
 
-    def __repr__(self) -> str:
-        return f"<LangTag '{self}'>"
 
-
-class LanguageTagLite:
+@dataclass(repr=False)
+class LanguageTag(StrReprCls):
     langtag: Optional[LangTag]
     private: Optional[str]
     grandfathered: Optional[str]
 
-    def __init__(self, match: re.Match[str] | str) -> None:
-        if isinstance(match, str):
-            match = match_rule("Language-Tag", match)
+    @classmethod
+    def from_match(cls, match: re.Match) -> LanguageTag:
         groups = match.groupdict("")
+        lite = cls(
+            langtag=None,
+            private=groups["private_tag"].lower().removeprefix("x-") or None,
+            grandfathered=groups["grandfathered"].lower() or None,
+        )
         if groups["langtag"]:
-            self.langtag = LangTag(match)
-        else:
-            self.langtag = None
-        self.private = groups["private_tag"].lower().removeprefix("x-") or None
-        self.grandfathered = groups["grandfathered"].lower() or None
+            lite.langtag = LangTag.from_groups(groups)
+        return lite
+
+    @classmethod
+    def from_str(cls, string: str) -> LanguageTag:
+        return cls.from_match(match_rule("Language-Tag", string))
 
     def __str__(self) -> str:
         if self.grandfathered:
@@ -117,6 +133,3 @@ class LanguageTagLite:
         if self.private:
             return "-".join(["x", self.private])
         return str(self.langtag)
-
-    def __repr__(self) -> str:
-        return f"<LanguageTagLite '{self}'>"
