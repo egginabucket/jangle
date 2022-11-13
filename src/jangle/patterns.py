@@ -102,7 +102,8 @@ def match_rule(rule: str, string: str) -> re.Match[str]:
 
 def rules_rst() -> str:
     """Saves a temporary reStructuredText file
-    documenting all rule patterns, used in `docs/source/patterns.rst`"""
+    documenting all rule patterns, used in `docs/source/patterns.rst`
+    """
     _, temp = tempfile.mkstemp(
         text=True,
         prefix="jangle_rfc5646_rules_",
