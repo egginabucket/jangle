@@ -11,13 +11,16 @@ IETF BCP 47 / RFC 5646 language tags in Django
 
 ## Use in your project!
 
-Install jangle from PyPI: 
+Install jangle from PyPI:
+
 `pip install django-jangle`
 
 ...or the latest version from GitHub:
+
 `pip install git+https://github.com/egginabucket/jangle.git`
 
 Add jangle to your project's installed apps:
+
 ```
 # settings.py
 
@@ -28,9 +31,11 @@ INSTALLED_APPS = [
 ```
 
 Migrate database:
+
 `python manage.py migrate`
 
 Save jangle data to the project's database:
+
 `python manage.py loadjangledata`
 
 ## Documentation
