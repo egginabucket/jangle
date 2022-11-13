@@ -343,7 +343,7 @@ class RegionSubtag(SubtagFromIANARecord):
 
     code = models.CharField(unique=True, max_length=3)
     """"""
-    ext_data = models.OneToOneField(
+    region = models.OneToOneField(
         Region,
         null=True,
         related_name="subtag",
@@ -352,12 +352,12 @@ class RegionSubtag(SubtagFromIANARecord):
     """External UN M.49 and ISO 3166 data."""
 
     def save(self, *args, **kwargs) -> None:
-        if self.ext_data is None:
+        if self.region is None:
             try:
                 if len(self.code) == 2:
-                    self.ext_data = Region.objects.get(iso__alpha_2=self.code)
+                    self.region = Region.objects.get(iso__alpha_2=self.code)
                 else:
-                    self.ext_data = Region.objects.get(no=int(self.code))
+                    self.region = Region.objects.get(no=int(self.code))
             except Region.DoesNotExist:
                 warnings.warn(f"could not find region of code '{self.code}'")
         super().save(*args, **kwargs)
