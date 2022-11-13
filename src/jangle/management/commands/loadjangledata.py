@@ -12,6 +12,7 @@ from jangle.models import (
     ISOLanguage,
     ISOLanguageCodes,
     ISOLanguageName,
+    LanguageTag,
     Script,
 )
 from jangle.readers import SIL_ISO_639_DOWNLOADS_URL, SIL_ISO_639_ZIPFILE
@@ -28,6 +29,12 @@ class Command(BaseCommand):
             help="Deletes existing data",
         )
         parser.add_argument(
+            "-C",
+            "--clear-tags",
+            action="store_true",
+            help="Deletes existing data and language tags",
+        )
+        parser.add_argument(
             "-b",
             "--batch-size",
             default=128,
@@ -35,7 +42,9 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options) -> None:
-        clear = options["clear"]
+        if options["clear_tags"]:
+            LanguageTag.objects.all().delete()
+        clear = options["clear"] or options["clear_tags"]
         batch_size = options["batch_size"]
         self.stdout.write("Registering ISO 639-2 and 639-1 codes...")
         ISOLanguageCodes.objects.register(clear, batch_size)
@@ -61,7 +70,7 @@ class Command(BaseCommand):
             zf = None
         self.stdout.write("Saving ISO 639-3 language codes...")
         ISOLanguage.objects.register(clear, batch_size, zf)
-        self.stdout.write("Saving ISO 639-3 language codes...")
+        self.stdout.write("Saving ISO 639-3 language names...")
         ISOLanguageName.objects.register(clear, batch_size, zf)
         self.stdout.write("Registering ISO 15924 scripts...")
         Script.objects.register(clear, batch_size)
