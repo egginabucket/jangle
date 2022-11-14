@@ -8,7 +8,7 @@ description = "IETF BCP 47 / RFC 5646 language tags in Django"
 readme = "README.md"
 license = "MIT"
 authors = [{ name = "Hannah Einstein", email = "hannah.a.einstein@gmail.com" }]
-keywords = ["django", "language-tags", "rfc5646", "rfc-5646"]
+keywords = ["rfc5646", "rfc 5646", "iso 639", "django", "language tags"]
 classifiers = [
     "Framework :: Django :: 4.1",
     "License :: OSI Approved :: MIT License",
