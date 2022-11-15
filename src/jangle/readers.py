@@ -109,7 +109,7 @@ class SilTableReader:
                     ),
                     "r",
                 )
-            except BaseException as exc:  # TODO
+            except Exception as exc:  # TODO
                 warnings.warn(str(exc))
         if self._f is None:
             self._r = requests.get(
@@ -161,6 +161,7 @@ class IANARegistryReader:
 
 class IANASubtagRegistryReader(IANARegistryReader):
     """Reads https://www.iana.org/assignments/language-subtag-registry/language-subtag-registry."""
+
     def __init__(self) -> None:
         super().__init__("language-subtag-registry")
 
