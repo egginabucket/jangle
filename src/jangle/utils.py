@@ -48,8 +48,9 @@ class BatchedCreateManager(models.Manager[_T]):
 
     def batched_create(self, objs: Iterable, batch_size=64, **kwargs) -> None:
         """Bulk-creates objects in batches of specified size."""
+        it = iter(objs)
         while True:
-            batch = list(islice(objs, batch_size))
+            batch = list(islice(it, batch_size))
             if not batch:
                 break
             self.bulk_create(batch, batch_size, **kwargs)
