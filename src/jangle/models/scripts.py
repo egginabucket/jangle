@@ -48,15 +48,35 @@ class Script(models.Model):
     """Represents an ISO 15924 script,
     saved from https://www.unicode.org/iso15924/.
     """
-    code = models.CharField("ISO 15924 code", unique=True, max_length=4)
+
+    code = models.CharField(
+        "ISO 15924 code",
+        unique=True,
+        max_length=4,
+    )
     """ISO 15924 code."""
-    no = models.PositiveSmallIntegerField("ISO 15924 number", unique=True)
+    no = models.PositiveSmallIntegerField(
+        "ISO 15924 number",
+        unique=True,
+    )
     """ISO 15924 number."""
-    names_en = models.CharField("English names", unique=True, max_length=75)
+    names_en = models.CharField(
+        "English names",
+        unique=True,
+        max_length=254,
+    )
     """English names."""
-    names_fr = models.CharField("noms français", unique=True, max_length=75)
+    names_fr = models.CharField(
+        "noms français",
+        unique=True,
+        max_length=254,
+    )
     """French names."""
-    pva = models.CharField("property value alias", null=True, max_length=150)
+    pva = models.CharField(
+        "property value alias",
+        null=True,
+        max_length=150,
+    )
     """Unicode property value alias.
     See https://www.unicode.org/Public/UCD/latest/ucd/PropertyValueAliases.txt.
     """

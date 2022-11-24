@@ -96,7 +96,7 @@ class ISOLanguageCodes(models.Model):
     names_en = models.CharField(
         "noms français",
         unique=True,
-        max_length=75,
+        max_length=254,
     )
     """English names.
     Separated with ";" if multiple exist.
@@ -104,7 +104,7 @@ class ISOLanguageCodes(models.Model):
     names_fr = models.CharField(
         "English names",
         unique=True,
-        max_length=75,
+        max_length=254,
     )
     """French names.
     Separated with ";" if multiple exist.
@@ -165,7 +165,7 @@ class SimpleISOLanguageCollection(models.Model):
     names_en = models.CharField(
         "English names",
         unique=True,
-        max_length=75,
+        max_length=254,
     )
     """English names.
     Separated with ";" if multiple exist.
@@ -173,7 +173,7 @@ class SimpleISOLanguageCollection(models.Model):
     names_fr = models.CharField(
         "noms français",
         unique=True,
-        max_length=75,
+        max_length=254,
     )
     """French names.
     Separated with ";" if multiple exist.
@@ -316,7 +316,6 @@ class ISOLanguage(models.Model):
     """ISO 693-1 and 639-2 codes."""
     ref_name = models.CharField(
         "reference name",
-        unique=True,
         max_length=150,
     )
     """Reference name."""

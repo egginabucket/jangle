@@ -194,7 +194,7 @@ class IANASubtagDescription(models.Model):
         on_delete=models.CASCADE,
     )
     """IANA subtag record."""
-    text = models.CharField(max_length=75)
+    text = models.CharField(max_length=254)
     """"""
     index = models.PositiveSmallIntegerField(default=0)
     """"""
@@ -203,7 +203,7 @@ class IANASubtagDescription(models.Model):
         return self.text
 
     class Meta:
-        unique_together = (("subtag", "index"), ("subtag", "text"))
+        unique_together = ("subtag", "index")
         ordering = ["subtag", "index"]
 
 
