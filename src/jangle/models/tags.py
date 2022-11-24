@@ -541,7 +541,8 @@ class LanguageTagManager(models.Manager["LanguageTag"]):
 
     def native(self) -> LanguageTag:
         """Returns a LanguageTag from `settings.LANGUAGE_CODE`"""
-        return self.get_from_str(settings.LANGUAGE_CODE)
+        lang, _ = self.get_or_create_from_str(settings.LANGUAGE_CODE)
+        return lang
 
 
 class LanguageTag(models.Model):
