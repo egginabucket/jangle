@@ -153,7 +153,7 @@ class VariantSubtagAdmin(admin.ModelAdmin):
 @admin.register(models.LanguageTag)
 class LanguageTagAdmin(admin.ModelAdmin):
     list_display = [
-        "tag_str",
+        "text",
         "description",
         "iana",
     ]
