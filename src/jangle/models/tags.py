@@ -470,7 +470,7 @@ class LanguageTagManager(models.Manager["LanguageTag"]):
     def create_from_langtag(
         self, langtag: jangle.lite.LangTag, allow_deprecated=False, **kwargs
     ) -> LanguageTag:
-        subtag_kwargs = dict()
+        subtag_kwargs = {}
         if not allow_deprecated:
             subtag_kwargs["iana__deprecated__isnull"] = True
         tag = self.model(**kwargs)
@@ -514,13 +514,12 @@ class LanguageTagManager(models.Manager["LanguageTag"]):
                 )
         return tag
 
-    def get_or_create_from_str(
+    def get_or_create_from_lite(
         self,
-        string: str,
+        lite: jangle.lite.LanguageTag,
         allow_deprecated=False,
-        defaults: dict[str, Any] = dict(),
+        defaults: dict[str, Any] = {},
     ) -> Tuple[LanguageTag, bool]:
-        lite = jangle.lite.LanguageTag.from_str(string)
         queryset = self.get_queryset()
         if not allow_deprecated:
             queryset = queryset.active()
@@ -537,12 +536,20 @@ class LanguageTagManager(models.Manager["LanguageTag"]):
             elif lite.private:
                 return self.create(private=lite.private), True
             else:
-                raise ValueError(f"cannot create grandfathered tag '{string}'")
+                raise ValueError(f"cannot create grandfathered tag '{lite}'")
+
+    def get_or_create_from_str(
+        self,
+        string: str,
+        allow_deprecated=False,
+        defaults: dict[str, Any] = {},
+    ) -> Tuple[LanguageTag, bool]:
+        lite = jangle.lite.LanguageTag.from_str(string)
+        return self.get_or_create_from_lite(lite, allow_deprecated, defaults)
 
     def native(self) -> LanguageTag:
         """Returns a LanguageTag from `settings.LANGUAGE_CODE`"""
-        lang, _ = self.get_or_create_from_str(settings.LANGUAGE_CODE)
-        return lang
+        return self.get_or_create_from_str(settings.LANGUAGE_CODE)[0]
 
 
 class LanguageTag(models.Model):
@@ -605,12 +612,24 @@ class LanguageTag(models.Model):
     @cached_property
     def pref_tag(self) -> LanguageTag:
         """Preferred tag as defined in the IANA registry, or `self`."""
-        if not (self.iana and self.iana.pref_value):
+        if self.iana and self.iana.pref_value:
+            return self.__class__.objects.get_from_str(self.iana.pref_value)
+        elif (
+            self.lang
+            and self.lang.suppress_script
+            and self.script
+            and self.script.script == self.lang.suppress_script
+        ):
+            lite = self.lite()
+            if not lite.langtag:
+                raise ValueError(f"{lite} should have langtag")
+            lite.langtag.script = None
+            return LanguageTag.objects.get_or_create_from_lite(lite)[0]
+        else:
             return self
-        return self.__class__.objects.get_from_str(self.iana.pref_value)
 
     @cached_property
-    def tag_str(self) -> str:
+    def text(self) -> str:
         if self.grandfathered_tag:
             return self.grandfathered_tag
         else:
@@ -693,7 +712,7 @@ class LanguageTag(models.Model):
         return lite
 
     def __str__(self) -> str:
-        return self.tag_str
+        return self.text
 
     objects = LanguageTagManager()
 

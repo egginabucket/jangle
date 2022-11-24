@@ -272,7 +272,7 @@ class ISOLanguageManager(BatchedCreateManager["ISOLanguage"]):
         self.batched_create(generate(), batch_size)
 
         # Macrolanguage mappings
-        mappings: dict[str, list[str]] = dict()
+        mappings: dict[str, list[str]] = {}
         last_m_id = ""
         with SilTableReader("iso-639-3-macrolanguages", zf) as reader:
             for row in reader:
