@@ -158,10 +158,14 @@ class LanguageTagAdmin(admin.ModelAdmin):
         "iana",
     ]
     search_fields = [
-        "lang_tag__code",
+        "lang__code",
+        "lang__iana__descriptions__text",
         "region__code",
-        "script__code",
+        "region__iana__descriptions__text",
+        "script__script__code",
+        "script__iana__descriptions__text",
         "variants__text",
+        "variants__iana__descriptions__text",
         "private",
         "grandfathered_tag",
         "iana__descriptions__text",
